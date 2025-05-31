@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.route('/')
   .get(protect, getOrders)
-  .post(createOrder); // Allow public access for customer orders
+  .post(protect, createOrder); // Thêm protect để chỉ cho user đã đăng nhập
 
 router.route('/:id')
   .get(protect, getOrderById);

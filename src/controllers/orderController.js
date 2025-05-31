@@ -54,64 +54,25 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Order data is required' });
     }
 
-    let customer, customerId, orderItems, customerName;
-    
-    // Handle both admin dashboard and customer website formats
-    if (req.body.customerId) {
+    let customerId, orderItems, customerName;
+
+    // Nếu là khách hàng đăng nhập (user role customer)
+    if (req.user && req.user.role === 'customer') {
+      customerId = req.user._id;
+      customerName = req.user.name;
+      if (!req.body.orderItems || !Array.isArray(req.body.orderItems)) {
+        return res.status(400).json({ message: 'Order items are required and must be an array' });
+      }
+      orderItems = req.body.orderItems;
+    } else if (req.body.customerId) {
       // Admin dashboard format
       if (!req.body.orderItems || !Array.isArray(req.body.orderItems)) {
         return res.status(400).json({ message: 'Order items are required and must be an array' });
       }
-
       customerId = req.body.customerId;
       orderItems = req.body.orderItems;
-      
-      // Get customer
-      customer = await Customer.findById(customerId);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-      customerName = customer.name;
-    } else if (req.body.customer) {
-      // Customer website format
-      const { name, phone, email, address } = req.body.customer;
-      
-      if (!phone) {
-        return res.status(400).json({ message: 'Phone number is required' });
-      }
-
-      if (!req.body.items || !Array.isArray(req.body.items)) {
-        return res.status(400).json({ message: 'Order items are required and must be an array' });
-      }
-      
-      // Find or create customer
-      customer = await Customer.findOne({ phone });
-      if (!customer) {
-        if (!name || !address) {
-          return res.status(400).json({ message: 'Name and address are required for new customers' });
-        }
-
-        // Create new customer
-        customer = await Customer.create({
-          name,
-          phone,
-          email: email || '',
-          address,
-          type: 'retail',  // Default to retail customer
-          debt: 0,
-          empty_debt: 0
-        });
-      }
-      
-      customerId = customer._id;
-      customerName = customer.name;
-      
-      // Convert items format to orderItems format
-      orderItems = req.body.items.map(item => ({
-        productId: item.product,
-        quantity: parseInt(item.quantity) || 0,
-        unitPrice: parseFloat(item.price) || 0
-      }));
+      // Có thể lấy customerName từ FE hoặc bỏ qua
+      customerName = req.body.customerName || '';
     } else {
       return res.status(400).json({ message: 'Invalid order data format' });
     }
@@ -149,7 +110,6 @@ export const createOrder = async (req, res) => {
       if (typeof product.price !== 'number' || product.price <= 0) {
         return res.status(400).json({ message: `Invalid price for product ${product.name}` });
       }
-      
       totalAmount += product.price * item.quantity;
       if (product.is_returnable) {
         returnableOut += item.quantity;
@@ -176,18 +136,14 @@ export const createOrder = async (req, res) => {
         productName: product.name,
         quantity: item.quantity,
         unitPrice: product.price,
-        total: item.quantity * product.price, // Calculate total to fix validation error
+        total: item.quantity * product.price,
       });
-
       // Update product stock
       product.stock -= item.quantity;
       await product.save();
     }
 
-    // Update customer debt
-    customer.debt += totalAmount;
-    customer.empty_debt += returnableOut;
-    await customer.save();
+    // Không cập nhật customer.debt, customer.empty_debt nữa
 
     res.status(201).json(order);
   } catch (error) {
