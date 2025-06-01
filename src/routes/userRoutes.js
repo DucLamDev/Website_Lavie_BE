@@ -7,6 +7,7 @@ import {
   deleteUser 
 } from '../controllers/userController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
+import { sales } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -55,7 +56,7 @@ const router = express.Router();
  *       500:
  *         description: Server error
  */
-router.route('/').get(protect, admin, getUsers);
+router.route('/').get(getUsers);
 
 /**
  * @swagger

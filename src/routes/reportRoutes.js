@@ -6,6 +6,7 @@ import {
   getCustomerDebtReport,
   getSupplierDebtReport,
   getDashboardStats,
+  getFinancialReport,
 } from '../controllers/reportController.js';
 import {
   getDailyRevenue,
@@ -18,54 +19,66 @@ import {
   exportRevenueReport,
   exportCustomerDebtReport,
   exportSupplierDebtReport,
+  exportSalesReport,
+  exportFinancialReport
 } from '../controllers/reportPdfController.js';
-import { protect, admin } from '../middleware/auth.js';
+import { protect, admin, sales } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.route('/sales')
-  .get(protect, admin, getSalesReport);
+  .get(protect, sales, getSalesReport);
 
 router.route('/inventory')
-  .get(protect, admin, getInventoryReport);
+  .get(protect, sales, getInventoryReport);
 
 router.route('/debt')
-  .get(protect, admin, getDebtReport);
+  .get(protect, sales, getDebtReport);
 
 router.route('/customer-debt')
-  .get(protect, admin, getCustomerDebtReport);
+  .get(protect, sales, getCustomerDebtReport);
 
 router.route('/supplier-debt')
-  .get(protect, admin, getSupplierDebtReport);
+  .get(protect, sales, getSupplierDebtReport);
 
 router.route('/dashboard')
   .get(protect, getDashboardStats);
 
 // New routes for revenue statistics
 router.route('/revenue/daily')
-  .get(protect, admin, getDailyRevenue);
+  .get(protect, sales, getDailyRevenue);
 
 router.route('/revenue/monthly')
-  .get(protect, admin, getMonthlyRevenue);
+  .get(protect, sales, getMonthlyRevenue);
 
 // Best selling products report
 router.route('/products/best-selling')
-  .get(protect, admin, getBestSellingProducts);
+  .get(protect, sales, getBestSellingProducts);
 
 // PDF generation routes
 router.route('/invoice/:orderId')
-  .get(protect, admin, generateInvoicePdf);
+  .get(protect, sales, generateInvoicePdf);
 
 router.route('/inventory/export')
-  .get(protect, admin, exportInventoryReport);
+  .get(protect, sales, exportInventoryReport);
 
 router.route('/revenue/export')
-  .get(protect, admin, exportRevenueReport);
+  .get(protect, sales, exportRevenueReport);
 
 router.route('/customer-debt/export')
-  .get(protect, admin, exportCustomerDebtReport);
+  .get(protect, sales, exportCustomerDebtReport);
 
 router.route('/supplier-debt/export')
-  .get(protect, admin, exportSupplierDebtReport);
+  .get(protect, sales, exportSupplierDebtReport);
+
+// Thêm route báo cáo tài chính
+router.route('/financial')
+  .get(protect, sales, getFinancialReport);
+
+router.route('/sales/export')
+  .get(protect, sales, exportSalesReport);
+
+router.route('/financial/export')
+  .get(protect, sales, exportFinancialReport);
 
 export default router;

@@ -20,6 +20,7 @@ import reportRoutes from './routes/reportRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
+import purchaseRoutes from './routes/purchaseRoutes.js';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 // Base route
 app.get('/', (req, res) => {

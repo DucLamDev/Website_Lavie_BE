@@ -1,7 +1,8 @@
 import Order from '../models/Order.js';
 import OrderItem from '../models/OrderItem.js';
-import Customer from '../models/Customer.js';
+import User from '../models/User.js';
 import Product from '../models/Product.js';
+import mongoose from 'mongoose';
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -71,10 +72,19 @@ export const createOrder = async (req, res) => {
       }
       customerId = req.body.customerId;
       orderItems = req.body.orderItems;
-      // Có thể lấy customerName từ FE hoặc bỏ qua
       customerName = req.body.customerName || '';
     } else {
       return res.status(400).json({ message: 'Invalid order data format' });
+    }
+
+    // Kiểm tra customerId hợp lệ và tồn tại
+    if (!mongoose.Types.ObjectId.isValid(customerId)) {
+      return res.status(400).json({ message: 'Invalid customerId' });
+    }
+    // Khi tạo đơn hàng, chỉ cần tìm user theo _id, không cần check role
+    const user = await User.findById(customerId);
+    if (!user) {
+      return res.status(404).json({ message: 'Customer (user) not found' });
     }
 
     // Validate order items
@@ -143,7 +153,7 @@ export const createOrder = async (req, res) => {
       await product.save();
     }
 
-    // Không cập nhật customer.debt, customer.empty_debt nữa
+    // Không cập nhật user.debt, user.empty_debt nữa
 
     res.status(201).json(order);
   } catch (error) {
@@ -176,29 +186,30 @@ export const updateOrderStatus = async (req, res) => {
 // @access  Private
 export const updateReturnable = async (req, res) => {
   try {
-    const { returnableIn } = req.body;
+    // FE gửi returnedQuantity
+    const { returnedQuantity } = req.body;
     const order = await Order.findById(req.params.id);
 
     if (order) {
       // Calculate new returnable in value (adding to existing value)
-      const newReturnableIn = order.returnableIn + returnableIn;
+      const newReturnableIn = order.returnableIn + returnedQuantity;
       
       if (newReturnableIn > order.returnableOut) {
         return res.status(400).json({ message: 'Returned quantity exceeds returnable quantity' });
       }
 
-      const customer = await Customer.findById(order.customerId);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
+      const user = await User.findOne({ _id: order.customerId, role: 'customer' });
+      if (!user) {
+        return res.status(404).json({ message: 'Customer (user) not found' });
       }
 
       // Update order returnable count
       order.returnableIn = newReturnableIn;
       await order.save();
 
-      // Update customer empty debt
-      customer.empty_debt -= returnableIn;
-      await customer.save();
+      // Update user empty debt
+      user.empty_debt -= returnedQuantity;
+      await user.save();
 
       res.json(order);
     } else {
@@ -218,18 +229,18 @@ export const updatePayment = async (req, res) => {
     const order = await Order.findById(req.params.id);
 
     if (order) {
-      const customer = await Customer.findById(order.customerId);
-      if (!customer) {
-        return res.status(404).json({ message: 'Customer not found' });
+      const user = await User.findOne({ _id: order.customerId, role: 'customer' });
+      if (!user) {
+        return res.status(404).json({ message: 'Customer (user) not found' });
       }
 
       // Update order payment
       order.paidAmount += amount;
       await order.save();
 
-      // Update customer debt
-      customer.debt -= amount;
-      await customer.save();
+      // Update user debt
+      user.debt -= amount;
+      await user.save();
 
       res.json(order);
     } else {
