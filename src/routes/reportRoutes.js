@@ -7,6 +7,7 @@ import {
   getSupplierDebtReport,
   getDashboardStats,
   getFinancialReport,
+  exportInventoryReport,
 } from '../controllers/reportController.js';
 import {
   getDailyRevenue,
@@ -15,12 +16,12 @@ import {
 } from '../controllers/invoiceController.js';
 import {
   generateInvoicePdf,
-  exportInventoryReport,
   exportRevenueReport,
   exportCustomerDebtReport,
   exportSupplierDebtReport,
   exportSalesReport,
-  exportFinancialReport
+  exportFinancialReport,
+  exportBestSellingProductsReport,
 } from '../controllers/reportPdfController.js';
 import { protect, admin, sales } from '../middleware/auth.js';
 
@@ -80,5 +81,8 @@ router.route('/sales/export')
 
 router.route('/financial/export')
   .get(protect, sales, exportFinancialReport);
+
+router.route('/products/best-selling/export')
+  .get(protect, sales, exportBestSellingProductsReport);
 
 export default router;

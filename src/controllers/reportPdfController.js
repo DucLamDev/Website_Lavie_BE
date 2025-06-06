@@ -80,24 +80,14 @@ export const generateInvoicePdf = async (req, res) => {
   }
 };
 
-// @desc    Generate inventory report PDF
+// @desc    Export inventory report PDF
 // @route   GET /api/reports/inventory/export
 // @access  Private/Admin
 export const exportInventoryReport = async (req, res) => {
   try {
     // Lấy dữ liệu tồn kho
     const products = await Product.find({});
-    const totalProducts = products.length;
-    const totalInventoryValue = products.reduce((sum, p) => sum + (p.stock * p.price), 0);
-    const lowStockProducts = products.filter(p => p.stock > 0 && p.stock <= (p.reorderLevel || 10));
-    const outOfStockProducts = products.filter(p => p.stock === 0);
-    const mostStockedProducts = products.filter(p => p.stock > 0).sort((a, b) => b.stock - a.stock).slice(0, 10);
-
-    // Format dữ liệu
-    const formatCurrency = v => new Intl.NumberFormat('vi-VN').format(v) + ' đ';
-    const formatNumber = v => new Intl.NumberFormat('vi-VN').format(v);
-
-    // Tạo HTML báo cáo
+    // Tạo HTML báo cáo tồn kho
     const html = `
     <!DOCTYPE html>
     <html>
@@ -111,10 +101,6 @@ export const exportInventoryReport = async (req, res) => {
         .company-details { color: #666; font-size: 10px; font-weight: 300; }
         .report-title { color: #2F5597; font-size: 18px; font-weight: bold; margin: 20px 0; text-align: center; }
         .report-period { font-size: 11px; margin-bottom: 20px; text-align: center; }
-        .summary-box { background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-        .summary-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .summary-label { font-weight: bold; }
-        .section-title { color: #2F5597; font-size: 14px; font-weight: bold; margin: 20px 0 10px 0; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         table thead { background-color: #2F5597; color: white; }
         table th, table td { padding: 8px; text-align: left; font-size: 10px; border: 1px solid #ddd; }
@@ -132,23 +118,8 @@ export const exportInventoryReport = async (req, res) => {
       </div>
       <div class="report-title">BÁO CÁO TỒN KHO</div>
       <div class="report-period">Ngày lập: ${new Date().toLocaleDateString('vi-VN')}</div>
-      <div class="summary-box">
-        <div class="summary-item"><div class="summary-label">TỔNG SẢN PHẨM:</div><div>${formatNumber(totalProducts)}</div></div>
-        <div class="summary-item"><div class="summary-label">GIÁ TRỊ TỒN KHO:</div><div>${formatCurrency(totalInventoryValue)}</div></div>
-        <div class="summary-item"><div class="summary-label">SẮP HẾT HÀNG:</div><div>${formatNumber(lowStockProducts.length)}</div></div>
-        <div class="summary-item"><div class="summary-label">ĐÃ HẾT HÀNG:</div><div>${formatNumber(outOfStockProducts.length)}</div></div>
-      </div>
-      <div class="section-title">SẢN PHẨM SẮP HẾT HÀNG</div>
-      <table><thead><tr><th>STT</th><th>Tên sản phẩm</th><th>Tồn kho</th><th>Mức cảnh báo</th><th>Đơn giá</th><th>Giá trị</th></tr></thead><tbody>
-        ${lowStockProducts.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${formatNumber(p.stock)}</td><td>${formatNumber(p.reorderLevel || 10)}</td><td>${formatCurrency(p.price)}</td><td>${formatCurrency(p.stock * p.price)}</td></tr>`).join('')}
-      </tbody></table>
-      <div class="section-title">SẢN PHẨM ĐÃ HẾT HÀNG</div>
-      <table><thead><tr><th>STT</th><th>Tên sản phẩm</th><th>Mức cảnh báo</th><th>Đơn giá</th></tr></thead><tbody>
-        ${outOfStockProducts.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${formatNumber(p.reorderLevel || 10)}</td><td>${formatCurrency(p.price)}</td></tr>`).join('')}
-      </tbody></table>
-      <div class="section-title">SẢN PHẨM TỒN KHO NHIỀU NHẤT</div>
-      <table><thead><tr><th>STT</th><th>Tên sản phẩm</th><th>Tồn kho</th><th>Mức cảnh báo</th><th>Đơn giá</th><th>Giá trị</th></tr></thead><tbody>
-        ${mostStockedProducts.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${formatNumber(p.stock)}</td><td>${formatNumber(p.reorderLevel || 10)}</td><td>${formatCurrency(p.price)}</td><td>${formatCurrency(p.stock * p.price)}</td></tr>`).join('')}
+      <table><thead><tr><th>STT</th><th>Tên sản phẩm</th><th>Đơn vị</th><th>Giá</th><th>Số lượng tồn kho</th></tr></thead><tbody>
+        ${products.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.unit}</td><td>${p.price.toLocaleString('vi-VN')}</td><td>${p.stock}</td></tr>`).join('')}
       </tbody></table>
       <div class="footer">© ${new Date().getFullYear()} W_LAVIE. Báo cáo được tạo tự động từ hệ thống.</div>
       <div class="page-number">Trang {#pageNum}</div>
@@ -893,5 +864,74 @@ export const exportFinancialReport = async (req, res) => {
   } catch (error) {
     console.error('Error generating financial report PDF:', error);
     res.status(500).json({ message: 'Error generating financial report PDF', error: error.message });
+  }
+};
+
+// @desc    Export best selling products report PDF
+// @route   GET /api/reports/products/best-selling/export
+// @access  Private/Admin
+export const exportBestSellingProductsReport = async (req, res) => {
+  try {
+    // Lấy tất cả sản phẩm
+    const allProducts = await Product.find({});
+    // Tạo HTML báo cáo
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Báo Cáo Sản Phẩm Tồn Kho</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .company-name { color: #2F5597; font-size: 22px; font-weight: bold; margin-bottom: 5px; }
+        .company-details { color: #666; font-size: 10px; font-weight: 300; }
+        .report-title { color: #2F5597; font-size: 18px; font-weight: bold; margin: 20px 0; text-align: center; }
+        .report-period { font-size: 11px; margin-bottom: 20px; text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        table thead { background-color: #2F5597; color: white; }
+        table th, table td { padding: 8px; text-align: left; font-size: 10px; border: 1px solid #ddd; }
+        table tr:nth-child(even) { background-color: #f5f5f5; }
+        .footer { text-align: center; margin-top: 50px; font-size: 10px; color: #666; }
+        .page-number { text-align: center; font-size: 8px; color: #999; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="company-name">W_LAVIE</div>
+        <div class="company-details">CÔNG TY TNHH THƯƠNG MẠI W_LAVIE</div>
+        <div class="company-details">123 Đường ABC, Phường XYZ, Quận 123, TP.HCM</div>
+        <div class="company-details">Điện thoại: 0123.456.789 - Email: contact@wlavie.com</div>
+      </div>
+      <div class="report-title">BÁO CÁO SẢN PHẨM TỒN KHO</div>
+      <div class="report-period">Ngày lập: ${new Date().toLocaleDateString('vi-VN')}</div>
+      <table><thead><tr><th>STT</th><th>Tên sản phẩm</th><th>Đơn vị</th><th>Giá</th><th>Số lượng tồn kho</th></tr></thead><tbody>
+        ${allProducts.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.unit}</td><td>${p.price.toLocaleString('vi-VN')}</td><td>${p.stock}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="footer">© ${new Date().getFullYear()} W_LAVIE. Báo cáo được tạo tự động từ hệ thống.</div>
+      <div class="page-number">Trang {#pageNum}</div>
+    </body></html>
+    `;
+    const result = await reporter.render({
+      template: {
+        content: html,
+        engine: 'handlebars',
+        recipe: 'chrome-pdf',
+        chrome: {
+          displayHeaderFooter: true,
+          marginTop: '1cm',
+          marginBottom: '1cm'
+        }
+      }
+    });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="inventory-products-report.pdf"`,
+      'Content-Length': result.content.length
+    });
+    res.send(result.content);
+  } catch (error) {
+    console.error('Error generating inventory products PDF:', error);
+    res.status(500).json({ message: 'Error generating inventory products PDF', error: error.message });
   }
 };

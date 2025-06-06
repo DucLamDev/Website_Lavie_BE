@@ -31,7 +31,7 @@ export const login = async (req, res) => {
 // @access  Admin
 export const register = async (req, res) => {
   try {
-    const { username, password, name, role } = req.body;
+    const { username, password, name, role, agency_level} = req.body;
 
     // Validate required fields
     if (!username || !password || !name) {
@@ -48,9 +48,10 @@ export const register = async (req, res) => {
     // The pre-save hook in the User model will hash this value
     const user = await User.create({
       username,
-      passwordHash: password,
+      passwordHash: password, 
       name,
-      role: role || 'customer', // Default to sales if not specified
+      role:role || customer,
+      agency_level: agency_level || 1  // Default to sales if not specified
     });
 
     if (user) {

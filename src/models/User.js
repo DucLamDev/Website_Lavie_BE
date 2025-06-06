@@ -67,6 +67,18 @@ const userSchema = mongoose.Schema(
       default: 'customer',
       enum: ['admin', 'sales', 'customer'],
     },
+    agency_level: {
+      type: Number,
+      required: false,
+    },
+    phone: {
+      type: String,
+      required: false,
+    },
+    address: {
+      type: String,
+      required: false,
+    },
   },
   {
     timestamps: true,

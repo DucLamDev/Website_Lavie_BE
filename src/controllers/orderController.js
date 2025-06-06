@@ -81,7 +81,7 @@ export const createOrder = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(customerId)) {
       return res.status(400).json({ message: 'Invalid customerId' });
     }
-    // Khi tạo đơn hàng, chỉ cần tìm user theo _id, không cần check role
+    // Lấy thông tin user để kiểm tra role và agency_level
     const user = await User.findById(customerId);
     if (!user) {
       return res.status(404).json({ message: 'Customer (user) not found' });
@@ -124,6 +124,11 @@ export const createOrder = async (req, res) => {
       if (product.is_returnable) {
         returnableOut += item.quantity;
       }
+    }
+
+    // Giảm giá 10% nếu là user role customer và agency_level === 2
+    if (user.role === 'customer' && user.agency_level === 2) {
+      totalAmount = Math.round(totalAmount * 0.9);
     }
 
     // Create order

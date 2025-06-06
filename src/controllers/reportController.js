@@ -452,8 +452,12 @@ export const getFinancialReport = async (req, res) => {
 
     // Tổng doanh thu = tổng totalAmount đơn hoàn thành
     const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-    // Tổng chi phí = tổng amount các transaction có method là 'expense' (nếu có), nếu không thì tổng tất cả
-    const totalExpenses = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+    // Lấy các phiếu nhập hàng còn nợ (công nợ nhà cung cấp)
+    const purchases = await Purchase.find({ debtRemaining: { $gt: 0 } });
+    const supplierDebt = purchases.reduce((sum, p) => sum + (p.debtRemaining || 0), 0);
+
+    // Tổng chi phí = tổng amount các transaction + tổng công nợ nhà cung cấp
+    const totalExpenses = transactions.reduce((sum, t) => sum + (t.amount || 0), 0) + supplierDebt;
     // Lợi nhuận ròng
     const netProfit = totalRevenue - totalExpenses;
 
@@ -491,6 +495,24 @@ export const getFinancialReport = async (req, res) => {
       revenueByCategory,
       expensesByCategory,
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Export inventory report (CSV)
+// @route   GET /api/reports/inventory/export
+// @access  Private/Admin
+export const exportInventoryReport = async (req, res) => {
+  try {
+    const products = await Product.find({});
+    let csv = 'Tên sản phẩm,Đơn vị,Giá,Số lượng tồn\n';
+    products.forEach(product => {
+      csv += `"${product.name}","${product.unit}",${product.price},${product.stock}\n`;
+    });
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="bao_cao_ton_kho.csv"');
+    res.send(csv);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
